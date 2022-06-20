@@ -2,51 +2,79 @@ import { Injectable } from '@nestjs/common';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 
-import { v4 as uuid } from 'uuid';
+import { hash } from 'bcryptjs';
+import { prisma } from 'src/database/prismaClient';
 
 @Injectable()
 export class AccountsService {
-  public accounts = [];
-
   async create({
-    cpf,
+    documents,
     email,
     firstName,
     lastName,
     password,
   }: CreateAccountDto) {
+    const userAlreadyExists = await prisma.account.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    if (userAlreadyExists) {
+      throw new Error('User already exists');
+    }
+
+    const passwordHash = await hash(password, 8);
+
     const account = {
-      id: uuid(),
-      cpf,
+      documents,
       email,
       firstName,
       lastName,
-      password,
-      statement: [],
+      password: passwordHash,
     };
 
-    this.accounts.push(account);
+    await prisma.account.create({
+      data: account,
+    });
   }
 
   async findAll(): Promise<CreateAccountDto[]> {
-    return await this.accounts;
+    return await prisma.account.findMany();
   }
 
   async findOne(id: string): Promise<CreateAccountDto> {
-    return await this.accounts.find((item) => item.id === id);
+    return await prisma.account.findFirst({
+      where: {
+        id: {
+          equals: id,
+          mode: 'insensitive',
+        },
+      },
+    });
   }
 
   async update(id: string, { firstName, lastName, email }: UpdateAccountDto) {
-    const account = await this.accounts.findIndex((item) => item.id === id);
-    this.accounts[account].firstName = firstName;
-    this.accounts[account].lastName = lastName;
-    this.accounts[account].email = email;
+    await prisma.account.update({
+      where: {
+        id: id,
+      },
+      data: {
+        firstName,
+        lastName,
+        email,
+      },
+    });
   }
 
   async remove(id: string) {
-    await this.accounts.splice(
-      this.accounts.findIndex((item) => item.id === id),
-      1,
-    );
+    await prisma.account.delete({
+      where: {
+        id: id,
+      },
+    });
   }
 }

@@ -8,7 +8,7 @@ export class CreateAccountDto {
   firstName: string;
   lastName: string;
   email: string;
-  cpf: string;
+  documents: string;
   password: string;
-  statement: Statement[];
+  statements?: Statement[];
 }
